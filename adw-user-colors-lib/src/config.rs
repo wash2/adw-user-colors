@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs::File, io::prelude::*, path::PathBuf};
 
 /// Cosmic Theme config
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Default, Debug, Deserialize, Serialize)]
 pub struct Config {
     /// Selected light theme name
     pub light: String,
@@ -29,7 +29,7 @@ impl Config {
     /// save the cosmic theme config
     pub fn save(&self) -> Result<()> {
         let xdg_dirs = xdg::BaseDirectories::with_prefix(NAME)?;
-        if let Ok(path) = xdg_dirs.place_config_file(PathBuf::from(CONFIG_NAME)) {
+        if let Ok(path) = xdg_dirs.place_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml"))) {
             let mut f = File::create(path)?;
             let toml = toml::ser::to_string_pretty(&self)?;
             f.write_all(toml.as_bytes())?;
@@ -41,28 +41,27 @@ impl Config {
 
     /// load the cosmic theme config
     pub fn load() -> Result<Self> {
-        let p = Self::config_path()?;
-        let mut f = File::open(p)?;
-        let mut s = String::new();
-        f.read_to_string(&mut s)?;
-        Ok(toml::from_str(s.as_str())?)
-    }
-
-    /// get the path of the cosmic theme config
-    pub fn config_path() -> Result<PathBuf> {
         let xdg_dirs = xdg::BaseDirectories::with_prefix(NAME)?;
-        if let Some(path) = xdg_dirs.find_config_file(PathBuf::from(CONFIG_NAME)) {
-            Ok(path)
+        let path = xdg_dirs.get_config_home();
+        std::fs::create_dir_all(&path)?;
+        let path = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml")));
+        if path.is_none() {
+            let s = Self::default();
+            s.save()?;
+        }        
+        if let Some(path) = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml"))) {
+            let mut f = File::open(&path)?;
+            let mut s = String::new();
+            f.read_to_string(&mut s)?;
+            Ok(toml::from_str(s.as_str())?)
         } else {
-            dbg!(xdg_dirs.get_config_home());
-            dbg!(xdg_dirs.get_config_dirs());
-            bail!("no theme config");
+            anyhow::bail!("Failed to load config")
         }
     }
 
     /// get the name of the active theme
     pub fn active_name(&self) -> Option<String> {
-        if adw::is_initialized() {
+        if !adw::is_initialized() {
             None
         } else {
             let manager = StyleManager::default();
@@ -72,6 +71,18 @@ impl Config {
                 Some(self.light.clone())
             }
         }
+    }
+
+    pub fn set_active_light(new: &str) -> Result<()> {
+        let mut self_ = Self::load()?;
+        self_.light = new.to_string();
+        Ok(self_.save()?)
+    }
+
+    pub fn set_active_dark(new: &str) -> Result<()> {
+        let mut self_ = Self::load()?;
+        self_.dark = new.to_string();
+        Ok(self_.save()?)
     }
 }
 

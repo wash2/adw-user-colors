@@ -6,13 +6,22 @@ pub mod colors;
 pub mod config;
 
 pub const NAME: &'static str = "adwaita-user-colors";
+pub const THEME_DIR: &'static str = "color-overrides";
+
 // load selected cosmic-theme
 pub fn load() -> anyhow::Result<()> {
-    let theme = cosmic_theme::Config::load()?;
+    adw::gtk::init()?;
+    adw::init();
+    let theme = config::Config::load()?;
     let active = theme.active_name();
+    if active.is_none() {
+        anyhow::bail!("no configured theme");
+    }
+    let active = active.unwrap();
 
-    let css_path: PathBuf = ["cosmic-theme", "themes"].iter().collect();
+    let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
     let css_dirs = xdg::BaseDirectories::with_prefix(css_path)?;
+    dbg!(&active);
     let active_theme_path = if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
         p
     } else {
