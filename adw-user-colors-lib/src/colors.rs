@@ -22,7 +22,7 @@ pub struct ColorOverrides {
     
     // Content areas, e.g. text views
     pub base_color: Option<String>,
-    pub  text_color: Option<String>,
+    pub text_color: Option<String>,
     
     // Main window background
     pub bg_color: Option<String>,
