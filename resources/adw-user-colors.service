@@ -1,0 +1,11 @@
+[Unit]
+Description=Load user color overrides to xdg-config/gtk-4.0
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=adw-user-colors --start
+ExecStop=adw-user-colors --stop
+
+[Install]
+WantedBy=multi-user.target
