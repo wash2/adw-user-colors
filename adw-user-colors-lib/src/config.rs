@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0-only
 
-use crate::{NAME, colors::ColorOverrides};
+use crate::{colors::ColorOverrides, NAME};
 use adw::StyleManager;
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -20,10 +20,7 @@ pub const CONFIG_NAME: &'static str = "config.ron";
 impl Config {
     /// create a new cosmic theme config
     pub fn new(light: String, dark: String) -> Self {
-        Self {
-            light,
-            dark,
-        }
+        Self { light, dark }
     }
 
     /// save the cosmic theme config
@@ -48,8 +45,9 @@ impl Config {
         if path.is_none() {
             let s = Self::default();
             s.save()?;
-        }        
-        if let Some(path) = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml"))) {
+        }
+        if let Some(path) = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml")))
+        {
             let mut f = File::open(&path)?;
             let mut s = String::new();
             f.read_to_string(&mut s)?;
@@ -86,8 +84,7 @@ impl Config {
     }
 }
 
-impl From<(ColorOverrides, ColorOverrides)> for Config
-{
+impl From<(ColorOverrides, ColorOverrides)> for Config {
     fn from((light, dark): (ColorOverrides, ColorOverrides)) -> Self {
         Self {
             light: light.name,
@@ -96,8 +93,7 @@ impl From<(ColorOverrides, ColorOverrides)> for Config
     }
 }
 
-impl From<ColorOverrides> for Config
-{
+impl From<ColorOverrides> for Config {
     fn from(t: ColorOverrides) -> Self {
         Self {
             light: t.clone().name,

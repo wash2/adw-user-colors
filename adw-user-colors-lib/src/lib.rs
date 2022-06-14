@@ -2,11 +2,24 @@
 
 use std::{path::PathBuf, fs::File, io::BufReader};
 
+use adw::{glib::{MainContext, MainLoop, Priority}, StyleManager};
+
 pub mod colors;
 pub mod config;
 
 pub const NAME: &'static str = "adwaita-user-colors";
 pub const THEME_DIR: &'static str = "color-overrides";
+use notify::{Watcher, RecursiveMode, RecommendedWatcher};
+use std::time::Duration;
+use futures::{
+    channel::mpsc::{channel, Receiver},
+    SinkExt, StreamExt,
+};
+use crate::config::CONFIG_NAME;
+
+enum Event {
+    UpdateColors,
+}
 
 // load selected cosmic-theme
 pub fn load() -> anyhow::Result<()> {
@@ -21,125 +34,115 @@ pub fn load() -> anyhow::Result<()> {
 
     let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
     let css_dirs = xdg::BaseDirectories::with_prefix(css_path)?;
-    dbg!(&active);
+
     let active_theme_path = if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
         p
     } else {
         anyhow::bail!("Failed to find theme");
     };
-    dbg!(&active_theme_path);
+
     let active_theme_file = File::open(active_theme_path)?;
     let reader = BufReader::new(active_theme_file);
     let overrides: colors::ColorOverrides = ron::de::from_reader(reader)?;
 
     let mut user_color_css = String::new();
-    if let Some(accent_bg_color) = overrides.accent_bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color accent_bg_color {};", &accent_bg_color));
-    }
-    if let Some(accent_fg_color) = overrides.accent_fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color accent_fg_color {};", &accent_fg_color));
-    }
-    if let Some(accent_color) = overrides.accent_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color accent_color {};", &accent_color));
-    }
-
-    if let Some(destructive_bg_color) = overrides.destructive_bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color destructive_bg_color {};", &destructive_bg_color));
-    }
-    if let Some(destructive_fg_color) = overrides.destructive_fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color destructive_fg_color {};", &destructive_fg_color));
-    }
-    if let Some(destructive_color) = overrides.destructive_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color destructive_color {};", &destructive_color));
-    }
-
-    if let Some(success_color) = overrides.success_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color success_color {};", &success_color));
-    }
-    if let Some(warning_color) = overrides.warning_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color warning_color {};", &warning_color));
-    }
-    if let Some(error_color) = overrides.error_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color error_color {};", &error_color));
-    }
-
-    if let Some(base_color) = overrides.base_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color base_color {};", &base_color));
-    }
-    if let Some(text_color) = overrides.text_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color text_color {};", &text_color));
-    }
-
-    
-    if let Some(bg_color) = overrides.bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color bg_color {};", &bg_color));
-    }
-    if let Some(fg_color) = overrides.fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color fg_color {};", &fg_color));
-    }
-    if let Some(shade_color) = overrides.shade_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color shade_color {};", &shade_color));
-    }
-
-    if let Some(headerbar_bg_color) = overrides.headerbar_bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color headerbar_bg_color {};", &headerbar_bg_color));
-    }
-    if let Some(headerbar_fg_color) = overrides.headerbar_fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color headerbar_fg_color {};", &headerbar_fg_color));
-    }
-    if let Some(headerbar_border_color) = overrides.headerbar_border_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color headerbar_border_color {};", &headerbar_border_color));
-    }
-    if let Some(headerbar_backdrop_color) = overrides.headerbar_backdrop_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color headerbar_backdrop_color {};", &headerbar_backdrop_color));
-    }
-    if let Some(headerbar_shade_color) = overrides.headerbar_shade_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color headerbar_shade_color {};", &headerbar_shade_color));
-    }
-
-    if let Some(card_bg_color) = overrides.card_bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color card_bg_color {};", &card_bg_color));
-    }
-    if let Some(card_fg_color) = overrides.card_fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color card_fg_color {};", &card_fg_color));
-    }
-    if let Some(card_border_color) = overrides.card_border_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color card_border_color {};", &card_border_color));
-    }
-
-    if let Some(popover_bg_color) = overrides.popover_bg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color popover_bg_color {};", &popover_bg_color));
-    }
-    if let Some(popover_fg_color) = overrides.popover_fg_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color popover_fg_color {};", &popover_fg_color));
-    }
-
-
-    if let Some(scrollbar_outline_color) = overrides.scrollbar_outline_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color scrollbar_outline_color {};", &scrollbar_outline_color));
-    }
-    if let Some(window_outline_color) = overrides.window_outline_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color window_outline_color {};", &window_outline_color));
-    }
-    if let Some(window_border_color) = overrides.window_border_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color window_border_color {};", &window_border_color));
-    }
-    if let Some(window_border_backdrop_color) = overrides.window_border_backdrop_color.as_ref() {
-        user_color_css.push_str(&format!("@define-color window_border_backdrop_color {};", &window_border_backdrop_color));
-    }
-
+    user_color_css.push_str(&overrides.as_css());
     user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
 
     let xdg_dirs = xdg::BaseDirectories::with_prefix("gtk-4.0")?;
-    let path = xdg_dirs.place_config_file(PathBuf::from("gtk.css"))?;
-    dbg!(&path);
-    std::fs::write(path, &user_color_css)?;
+    let mut path = xdg_dirs.place_config_file(PathBuf::from("gtk.css"))?;
 
-    println!("{user_color_css}");
+    std::fs::write(&path, &user_color_css)?;
 
+    // FIXME
+    let main_context = MainContext::default();
+    let (tx, rx) = MainContext::channel(Priority::default());
+    let tx_clone = tx.clone();
+    main_context.spawn_local(async move {
+        let style_manager = StyleManager::default();
+        style_manager.connect_color_scheme_notify(move |_| {
+            let _ = tx_clone.send(Event::UpdateColors);
+        });
+    });
+    
+    let tx_clone = tx.clone();
+    main_context.spawn_local(async move {
+        let (mut tx, mut rx) = channel(1);
+
+        // Automatically select the best implementation for your platform.
+        // You can also access each implementation directly e.g. INotifyWatcher.
+        let mut watcher = RecommendedWatcher::new(move |res| {
+            futures::executor::block_on(async {
+                tx.send(res).await.unwrap();
+            })
+        }).unwrap();
+
+        watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
+        if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix(NAME) {
+            if let Some(config_path) = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml"))) {
+                let _ = watcher.watch(&config_path, RecursiveMode::NonRecursive).unwrap();
+            }
+        }
+        if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
+            path = p;
+            let _ = watcher.watch(path.as_ref(), RecursiveMode::Recursive);
+        }
+
+        while let Some(res) = rx.next().await {
+            match res {
+                Ok(e) => {
+                    match e.kind {
+                        notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+                            let _ = tx_clone.send(Event::UpdateColors);
+                            let _ = watcher.unwatch(&path);
+                            if let Ok(theme) = config::Config::load() {
+                                let active = theme.active_name();
+            
+                                let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+                                let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
+        
+                                if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
+                                    if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
+                                        path = p;
+                                        let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
+                                    }
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                },
+                Err(e) => eprintln!("watch error: {:?}", e),
+            }
+        }
+    });
+
+    rx.attach(Some(&main_context), move |_| {
+        println!("received update event");
+        let mut user_color_css = String::new();
+        let active = theme.active_name().unwrap();
+        let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+        let css_dirs = xdg::BaseDirectories::with_prefix(css_path).unwrap();
+        let active_theme_path = css_dirs.find_data_file(format!("{active}.ron")).unwrap();
+        let active_theme_file = File::open(active_theme_path).unwrap();
+        let reader = BufReader::new(active_theme_file);
+        let overrides: colors::ColorOverrides = ron::de::from_reader(reader).unwrap();
+
+        user_color_css.push_str(&overrides.as_css());
+        user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
+        if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix("gtk-4.0") {
+            if let Ok(path) = xdg_dirs.place_config_file(PathBuf::from("gtk.css")) {
+                let _ = std::fs::write(&path, &user_color_css);
+            }
+        }
+        adw::prelude::Continue(true)
+    });
+    let main_loop = MainLoop::new(Some(&main_context), true);
+    main_loop.run();
     Ok(())
 }
 
+
 pub fn unload() -> anyhow::Result<()> {
-    Ok(())
+    todo!();
 }
