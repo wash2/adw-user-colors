@@ -233,10 +233,16 @@ impl ColorOverrides {
         }
 
         if let Some(success_color) = self.success_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color success_color {};\n", &success_color));
+            user_color_css.push_str(&format!(
+                "@define-color success_color {};\n",
+                &success_color
+            ));
         }
         if let Some(warning_color) = self.warning_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color warning_color {};\n", &warning_color));
+            user_color_css.push_str(&format!(
+                "@define-color warning_color {};\n",
+                &warning_color
+            ));
         }
         if let Some(error_color) = self.error_color.as_ref() {
             user_color_css.push_str(&format!("@define-color error_color {};\n", &error_color));
@@ -291,10 +297,16 @@ impl ColorOverrides {
         }
 
         if let Some(card_bg_color) = self.card_bg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color card_bg_color {};\n", &card_bg_color));
+            user_color_css.push_str(&format!(
+                "@define-color card_bg_color {};\n",
+                &card_bg_color
+            ));
         }
         if let Some(card_fg_color) = self.card_fg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color card_fg_color {};\n", &card_fg_color));
+            user_color_css.push_str(&format!(
+                "@define-color card_fg_color {};\n",
+                &card_fg_color
+            ));
         }
         if let Some(card_border_color) = self.card_border_color.as_ref() {
             user_color_css.push_str(&format!(

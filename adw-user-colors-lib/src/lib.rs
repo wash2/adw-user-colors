@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MPL-2.0-only
 
-use std::{path::PathBuf, fs::File, io::BufReader};
+use std::{fs::File, io::BufReader, path::PathBuf};
 
-use adw::{glib::{MainContext, MainLoop, Priority}, StyleManager};
+use adw::{
+    glib::{MainContext, MainLoop, Priority},
+    StyleManager,
+};
 
 pub mod colors;
 pub mod config;
 
 pub const NAME: &'static str = "adwaita-user-colors";
 pub const THEME_DIR: &'static str = "color-overrides";
-use notify::{Watcher, RecursiveMode, RecommendedWatcher};
-use std::time::Duration;
-use futures::{
-    channel::mpsc::{channel, Receiver},
-    SinkExt, StreamExt,
-};
 use crate::config::CONFIG_NAME;
+use futures::{channel::mpsc::channel, SinkExt, StreamExt};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
 enum Event {
     UpdateColors,
@@ -64,7 +63,7 @@ pub fn load() -> anyhow::Result<()> {
             let _ = tx_clone.send(Event::UpdateColors);
         });
     });
-    
+
     let tx_clone = tx.clone();
     main_context.spawn_local(async move {
         let (mut tx, mut rx) = channel(1);
@@ -75,12 +74,17 @@ pub fn load() -> anyhow::Result<()> {
             futures::executor::block_on(async {
                 tx.send(res).await.unwrap();
             })
-        }).unwrap();
+        })
+        .unwrap();
 
         watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
         if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix(NAME) {
-            if let Some(config_path) = xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml"))) {
-                let _ = watcher.watch(&config_path, RecursiveMode::NonRecursive).unwrap();
+            if let Some(config_path) =
+                xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml")))
+            {
+                let _ = watcher
+                    .watch(&config_path, RecursiveMode::NonRecursive)
+                    .unwrap();
             }
         }
         if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
@@ -90,27 +94,25 @@ pub fn load() -> anyhow::Result<()> {
 
         while let Some(res) = rx.next().await {
             match res {
-                Ok(e) => {
-                    match e.kind {
-                        notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
-                            let _ = tx_clone.send(Event::UpdateColors);
-                            let _ = watcher.unwatch(&path);
-                            if let Ok(theme) = config::Config::load() {
-                                let active = theme.active_name();
-            
-                                let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
-                                let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
-        
-                                if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
-                                    if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-                                        path = p;
-                                        let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
-                                    }
+                Ok(e) => match e.kind {
+                    notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
+                        let _ = tx_clone.send(Event::UpdateColors);
+                        let _ = watcher.unwatch(&path);
+                        if let Ok(theme) = config::Config::load() {
+                            let active = theme.active_name();
+
+                            let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+                            let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
+
+                            if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
+                                if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
+                                    path = p;
+                                    let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
                                 }
                             }
-                        },
-                        _ => {}
+                        }
                     }
+                    _ => {}
                 },
                 Err(e) => eprintln!("watch error: {:?}", e),
             }
@@ -141,7 +143,6 @@ pub fn load() -> anyhow::Result<()> {
     main_loop.run();
     Ok(())
 }
-
 
 pub fn unload() -> anyhow::Result<()> {
     todo!();
