@@ -77,19 +77,20 @@ pub fn load() -> anyhow::Result<()> {
         })
         .unwrap();
 
-        watcher.watch(&path, RecursiveMode::NonRecursive).unwrap();
+        let mut config_path = Default::default();
         if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix(NAME) {
-            if let Some(config_path) =
+            if let Some(path) =
                 xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml")))
             {
                 let _ = watcher
-                    .watch(&config_path, RecursiveMode::NonRecursive)
+                    .watch(&path, RecursiveMode::NonRecursive)
                     .unwrap();
+                config_path = path;
             }
         }
         if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
             path = p;
-            let _ = watcher.watch(path.as_ref(), RecursiveMode::Recursive);
+            let _ = watcher.watch(path.as_ref(), RecursiveMode::NonRecursive);
         }
 
         while let Some(res) = rx.next().await {
@@ -97,17 +98,20 @@ pub fn load() -> anyhow::Result<()> {
                 Ok(e) => match e.kind {
                     notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
                         let _ = tx_clone.send(Event::UpdateColors);
-                        let _ = watcher.unwatch(&path);
-                        if let Ok(theme) = config::Config::load() {
-                            let active = theme.active_name();
-
-                            let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
-                            let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
-
-                            if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
-                                if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-                                    path = p;
-                                    let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
+                        if e.paths.contains(&config_path) {
+                            let _ = watcher.unwatch(&path);
+                            if let Ok(theme) = config::Config::load() {
+                                let active = theme.active_name();
+    
+                                let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+                                let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
+    
+                                if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
+                                    if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
+                                        dbg!(&p);
+                                        path = p;
+                                        let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
+                                    }
                                 }
                             }
                         }
@@ -120,7 +124,6 @@ pub fn load() -> anyhow::Result<()> {
     });
 
     rx.attach(Some(&main_context), move |_| {
-        println!("received update event");
         let mut user_color_css = String::new();
         let active = theme.active_name().unwrap();
         let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
