@@ -108,7 +108,6 @@ pub fn load() -> anyhow::Result<()> {
     
                                 if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
                                     if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-                                        dbg!(&p);
                                         path = p;
                                         let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
                                     }
