@@ -25,17 +25,24 @@ pub struct ColorOverrides {
 
     // Levelbars, entries, labels and infobars. These don't need text colors
     pub success_color: Option<String>,
-    pub warning_color: Option<String>,
-    pub error_color: Option<String>,
+    pub success_bg_color: Option<String>,
+    pub success_fg_color: Option<String>,
 
-    // Content areas, e.g. text views
-    pub base_color: Option<String>,
-    pub text_color: Option<String>,
+    pub warning_color: Option<String>,
+    pub warning_bg_color: Option<String>,
+    pub warning_fg_color: Option<String>,
+
+    pub error_color: Option<String>,
+    pub error_bg_color: Option<String>,
+    pub error_fg_color: Option<String>,
 
     // Main window background
-    pub bg_color: Option<String>,
-    pub fg_color: Option<String>,
-    pub shade_color: Option<String>,
+    pub window_bg_color: Option<String>,
+    pub window_fg_color: Option<String>,
+
+    // Content areas, e.g. text views
+    pub view_bg_color: Option<String>,
+    pub view_fg_color: Option<String>,
 
     // Header bar, search bar, tab bar
     pub headerbar_bg_color: Option<String>,
@@ -56,8 +63,7 @@ pub struct ColorOverrides {
     // Miscellaneous
     pub scrollbar_outline_color: Option<String>,
     pub window_outline_color: Option<String>,
-    pub window_border_color: Option<String>,
-    pub window_border_backdrop_color: Option<String>,
+    pub shade_color: Option<String>,
 }
 
 impl ColorOverrides {
@@ -101,22 +107,27 @@ impl ColorOverrides {
             // destructive-action buttons
             "destructive_bg_color" => self.destructive_bg_color = value,
             "destructive_fg_color" => self.destructive_fg_color = value,
-
             "destructive_color" => self.destructive_color = value,
 
-            // Levelbars, entries, labels and infobars. These don't need text colors
             "success_color" => self.success_color = value,
+            "success_bg_color" => self.success_color = value,
+            "success_fg_color" => self.success_color = value,
+            
             "warning_color" => self.warning_color = value,
+            "warning_bg_color" => self.warning_color = value,
+            "warning_fg_color" => self.warning_color = value,
+
             "error_color" => self.error_color = value,
+            "error_bg_color" => self.error_color = value,
+            "error_fg_color" => self.error_color = value,
 
             // Content areas, e.g. text views
-            "base_color" => self.base_color = value,
-            "text_color" => self.text_color = value,
+            "view_bg_color" => self.view_bg_color = value,
+            "view_fg_color" => self.view_fg_color = value,
 
             // Main window background
-            "bg_color" => self.bg_color = value,
-            "fg_color" => self.fg_color = value,
-            "shade_color" => self.shade_color = value,
+            "window_bg_color" => self.window_bg_color = value,
+            "window_fg_color" => self.window_fg_color = value,
 
             // Header bar, search bar, tab bar
             "headerbar_bg_color" => self.headerbar_bg_color = value,
@@ -137,8 +148,7 @@ impl ColorOverrides {
             // Miscellaneous
             "scrollbar_outline_color" => self.scrollbar_outline_color = value,
             "window_outline_color" => self.window_outline_color = value,
-            "window_border_color" => self.window_border_color = value,
-            "window_border_backdrop_color" => self.window_border_backdrop_color = value,
+            "shade_color" => self.shade_color = value,
             _ => anyhow::bail!("Invalid key"),
         }
         Ok(())
@@ -153,22 +163,27 @@ impl ColorOverrides {
             // destructive-action buttons
             "destructive_bg_color" => self.destructive_bg_color.clone(),
             "destructive_fg_color" => self.destructive_fg_color.clone(),
-
             "destructive_color" => self.destructive_color.clone(),
 
-            // Levelbars.clone(), entries.clone(), labels and infobars. These don't need text colors
             "success_color" => self.success_color.clone(),
+            "success_bg_color" => self.success_color.clone(),
+            "success_fg_color" => self.success_color.clone(),
+            
             "warning_color" => self.warning_color.clone(),
+            "warning_bg_color" => self.warning_color.clone(),
+            "warning_fg_color" => self.warning_color.clone(),
+
             "error_color" => self.error_color.clone(),
+            "error_bg_color" => self.error_color.clone(),
+            "error_fg_color" => self.error_color.clone(),
 
             // Content areas.clone(), e.g. text views
-            "base_color" => self.base_color.clone(),
-            "text_color" => self.text_color.clone(),
+            "view_bg_color" => self.view_bg_color.clone(),
+            "view_fg_color" => self.view_fg_color.clone(),
 
             // Main window background
-            "bg_color" => self.bg_color.clone(),
-            "fg_color" => self.fg_color.clone(),
-            "shade_color" => self.shade_color.clone(),
+            "window_bg_color" => self.window_bg_color.clone(),
+            "window_fg_color" => self.window_fg_color.clone(),
 
             // Header bar.clone(), search bar.clone(), tab bar
             "headerbar_bg_color" => self.headerbar_bg_color.clone(),
@@ -189,8 +204,7 @@ impl ColorOverrides {
             // Miscellaneous
             "scrollbar_outline_color" => self.scrollbar_outline_color.clone(),
             "window_outline_color" => self.window_outline_color.clone(),
-            "window_border_color" => self.window_border_color.clone(),
-            "window_border_backdrop_color" => self.window_border_backdrop_color.clone(),
+            "shade_color" => self.shade_color.clone(),
             _ => None,
         }
     }
@@ -238,28 +252,58 @@ impl ColorOverrides {
                 &success_color
             ));
         }
+        if let Some(success_bg_color) = self.success_bg_color.as_ref() {
+            user_color_css.push_str(&format!(
+                "@define-color success_bg_color {};\n",
+                &success_bg_color
+            ));
+        }
+        if let Some(success_fg_color) = self.success_fg_color.as_ref() {
+            user_color_css.push_str(&format!(
+                "@define-color success_fg_color {};\n",
+                &success_fg_color
+            ));
+        }
         if let Some(warning_color) = self.warning_color.as_ref() {
             user_color_css.push_str(&format!(
                 "@define-color warning_color {};\n",
                 &warning_color
             ));
         }
+        if let Some(warning_bg_color) = self.warning_bg_color.as_ref() {
+            user_color_css.push_str(&format!(
+                "@define-color warning_bg_color {};\n",
+                &warning_bg_color
+            ));
+        }
+        if let Some(warning_fg_color) = self.warning_fg_color.as_ref() {
+            user_color_css.push_str(&format!(
+                "@define-color warning_fg_color {};\n",
+                &warning_fg_color
+            ));
+        }
         if let Some(error_color) = self.error_color.as_ref() {
             user_color_css.push_str(&format!("@define-color error_color {};\n", &error_color));
         }
+        if let Some(error_bg_color) = self.error_bg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color error_bg_color {};\n", &error_bg_color));
+        }
+        if let Some(error_fg_color) = self.error_fg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color error_fg_color {};\n", &error_fg_color));
+        }
 
-        if let Some(base_color) = self.base_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color base_color {};\n", &base_color));
+        if let Some(window_bg_color) = self.window_bg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color window_bg_color {};\n", &window_bg_color));
         }
-        if let Some(text_color) = self.text_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color text_color {};\n", &text_color));
+        if let Some(window_fg_color) = self.window_fg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color window_fg_color {};\n", &window_fg_color));
         }
 
-        if let Some(bg_color) = self.bg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color bg_color {};\n", &bg_color));
+        if let Some(view_bg_color) = self.view_bg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color view_bg_color {};\n", &view_bg_color));
         }
-        if let Some(fg_color) = self.fg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color fg_color {};\n", &fg_color));
+        if let Some(view_fg_color) = self.view_fg_color.as_ref() {
+            user_color_css.push_str(&format!("@define-color view_fg_color {};\n", &view_fg_color));
         }
         if let Some(shade_color) = self.shade_color.as_ref() {
             user_color_css.push_str(&format!("@define-color shade_color {};\n", &shade_color));
@@ -340,19 +384,6 @@ impl ColorOverrides {
                 &window_outline_color
             ));
         }
-        if let Some(window_border_color) = self.window_border_color.as_ref() {
-            user_color_css.push_str(&format!(
-                "@define-color window_border_color {};\n",
-                &window_border_color
-            ));
-        }
-        if let Some(window_border_backdrop_color) = self.window_border_backdrop_color.as_ref() {
-            user_color_css.push_str(&format!(
-                "@define-color window_border_backdrop_color {};\n",
-                &window_border_backdrop_color
-            ));
-        }
-
         user_color_css
     }
 }
