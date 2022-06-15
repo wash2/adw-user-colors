@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
-    "adw-user-colors-bin",
+    "adw-user-colors-service",
+    "adw-user-colors-editor",
     "adw-user-colors-lib",
 ]

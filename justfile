@@ -13,7 +13,7 @@ sharedir := rootdir + prefix + '/share'
 iconsdir := sharedir + '/icons/hicolor/scalable/apps'
 bindir := rootdir + prefix + '/bin'
 
-id := 'com.system76.CosmicAppList'
+editor_id := 'gay.ash.AdwaitaUserColorsEditor'
 
 
 all: _extract_vendor
@@ -21,10 +21,16 @@ all: _extract_vendor
 
 # Installs files into the system
 install:
-    # app list
+    # service
     install -Dm0644 resources/adw-user-colors.service ~/.config/systemd/user/
     install -Dm0755 target/release/adw-user-colors {{bindir}}/adw-user-colors
-    systemctl enable adw-user-colors.service --user
+    # FIXME
+    # systemctl enable adw-user-colors.service --user
+
+    # editor
+    install -Dm0644 adw-user-colors-editor/data/icons/{{editor_id}}.svg {{iconsdir}}/{{editor_id}}.svg
+    install -Dm0644 adw-user-colors-editor/data/{{editor_id}}.desktop {{sharedir}}/applications/{{editor_id}}.desktop
+    install -Dm0755 target/release/adw-user-colors-editor {{bindir}}/adw-user-colors-editor
 
 # Extracts vendored dependencies if vendor=1
 _extract_vendor:

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=User Colors editor
+Comment=Customize adwaita colors for your user
+Type=Application
+Exec=adw-user-colors-editor
+Terminal=false
+Categories=GNOME;GTK;
+Keywords=Gnome;GTK;
+Icon=gay.ash.AdwaitaUserColorsEditor.svg
+StartupNotify=true
