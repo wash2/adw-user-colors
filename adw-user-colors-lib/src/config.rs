@@ -36,6 +36,11 @@ impl Config {
         }
     }
 
+    pub fn init() -> anyhow::Result<PathBuf> {
+        let base_dirs = xdg::BaseDirectories::new()?;
+        Ok(base_dirs.create_config_directory(NAME)?)
+    }
+
     /// load the cosmic theme config
     pub fn load() -> Result<Self> {
         let xdg_dirs = xdg::BaseDirectories::with_prefix(NAME)?;

@@ -2,13 +2,13 @@
 
 use std::{
     fs::File,
-    io::Write,
+    io::{Write, BufReader},
     path::{Path, PathBuf},
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::{NAME, THEME_DIR};
+use crate::{NAME, THEME_DIR, config::Config};
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct ColorOverrides {
@@ -81,9 +81,16 @@ impl ColorOverrides {
         Ok(())
     }
 
+    pub fn init() -> anyhow::Result<PathBuf> {
+        let ron_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+        let base_dirs = xdg::BaseDirectories::new()?;
+        Ok(base_dirs.create_data_directory(ron_path)?)
+    }
+
     pub fn load_from_name(name: &str) -> anyhow::Result<Self> {
         let ron_path: PathBuf = [NAME, THEME_DIR].iter().collect();
         let ron_dirs = xdg::BaseDirectories::with_prefix(ron_path)?;
+
         let ron_name = format!("{}.ron", name);
         if let Some(p) = ron_dirs.find_data_file(ron_name) {
             let f = File::open(p)?;
@@ -96,6 +103,23 @@ impl ColorOverrides {
     pub fn load(p: &dyn AsRef<Path>) -> anyhow::Result<Self> {
         let f = File::open(p)?;
         Ok(ron::de::from_reader(f)?)
+    }
+
+    pub fn load_active() -> anyhow::Result<Self> {
+        let config = Config::load()?;
+        let active = match config.active_name() {
+            Some(n) => n,
+            _ => anyhow::bail!("No configured active overrides")
+        };
+        let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
+        let css_dirs = xdg::BaseDirectories::with_prefix(css_path)?;
+        let active_theme_path = match css_dirs.find_data_file(format!("{active}.ron")) {
+            Some(p) => p,
+            _ => anyhow::bail!("Could not find theme")
+        };
+        let active_theme_file = File::open(active_theme_path)?;
+        let reader = BufReader::new(active_theme_file);
+        Ok(ron::de::from_reader(reader)?)
     }
 
     pub fn set_key(&mut self, key: &str, value: Option<String>) -> anyhow::Result<()> {
@@ -112,7 +136,7 @@ impl ColorOverrides {
             "success_color" => self.success_color = value,
             "success_bg_color" => self.success_color = value,
             "success_fg_color" => self.success_color = value,
-            
+
             "warning_color" => self.warning_color = value,
             "warning_bg_color" => self.warning_color = value,
             "warning_fg_color" => self.warning_color = value,
@@ -168,7 +192,7 @@ impl ColorOverrides {
             "success_color" => self.success_color.clone(),
             "success_bg_color" => self.success_color.clone(),
             "success_fg_color" => self.success_color.clone(),
-            
+
             "warning_color" => self.warning_color.clone(),
             "warning_bg_color" => self.warning_color.clone(),
             "warning_fg_color" => self.warning_color.clone(),
@@ -286,24 +310,42 @@ impl ColorOverrides {
             user_color_css.push_str(&format!("@define-color error_color {};\n", &error_color));
         }
         if let Some(error_bg_color) = self.error_bg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color error_bg_color {};\n", &error_bg_color));
+            user_color_css.push_str(&format!(
+                "@define-color error_bg_color {};\n",
+                &error_bg_color
+            ));
         }
         if let Some(error_fg_color) = self.error_fg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color error_fg_color {};\n", &error_fg_color));
+            user_color_css.push_str(&format!(
+                "@define-color error_fg_color {};\n",
+                &error_fg_color
+            ));
         }
 
         if let Some(window_bg_color) = self.window_bg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color window_bg_color {};\n", &window_bg_color));
+            user_color_css.push_str(&format!(
+                "@define-color window_bg_color {};\n",
+                &window_bg_color
+            ));
         }
         if let Some(window_fg_color) = self.window_fg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color window_fg_color {};\n", &window_fg_color));
+            user_color_css.push_str(&format!(
+                "@define-color window_fg_color {};\n",
+                &window_fg_color
+            ));
         }
 
         if let Some(view_bg_color) = self.view_bg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color view_bg_color {};\n", &view_bg_color));
+            user_color_css.push_str(&format!(
+                "@define-color view_bg_color {};\n",
+                &view_bg_color
+            ));
         }
         if let Some(view_fg_color) = self.view_fg_color.as_ref() {
-            user_color_css.push_str(&format!("@define-color view_fg_color {};\n", &view_fg_color));
+            user_color_css.push_str(&format!(
+                "@define-color view_fg_color {};\n",
+                &view_fg_color
+            ));
         }
         if let Some(shade_color) = self.shade_color.as_ref() {
             user_color_css.push_str(&format!("@define-color shade_color {};\n", &shade_color));

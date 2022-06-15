@@ -6,13 +6,14 @@ use adw::{
     glib::{MainContext, MainLoop, Priority},
     StyleManager,
 };
+use colors::ColorOverrides;
+use config::Config;
 
 pub mod colors;
 pub mod config;
 
 pub const NAME: &'static str = "adwaita-user-colors";
 pub const THEME_DIR: &'static str = "color-overrides";
-use crate::config::CONFIG_NAME;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -24,6 +25,9 @@ enum Event {
 pub fn load() -> anyhow::Result<()> {
     adw::gtk::init()?;
     adw::init();
+    let config_dir_path = Config::init()?;
+    let color_dir_path = ColorOverrides::init()?;
+
     let theme = config::Config::load()?;
     let active = theme.active_name();
     if active.is_none() {
@@ -34,24 +38,20 @@ pub fn load() -> anyhow::Result<()> {
     let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
     let css_dirs = xdg::BaseDirectories::with_prefix(css_path)?;
 
-    let active_theme_path = if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-        p
-    } else {
-        anyhow::bail!("Failed to find theme");
-    };
+    if let Some(active_theme_path) = css_dirs.find_data_file(format!("{active}.ron")) {
+        let active_theme_file = File::open(active_theme_path)?;
+        let reader = BufReader::new(active_theme_file);
+        let overrides: colors::ColorOverrides = ron::de::from_reader(reader)?;
 
-    let active_theme_file = File::open(active_theme_path)?;
-    let reader = BufReader::new(active_theme_file);
-    let overrides: colors::ColorOverrides = ron::de::from_reader(reader)?;
+        let mut user_color_css = String::new();
+        user_color_css.push_str(&overrides.as_css());
+        user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
 
-    let mut user_color_css = String::new();
-    user_color_css.push_str(&overrides.as_css());
-    user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
+        let xdg_dirs = xdg::BaseDirectories::with_prefix("gtk-4.0")?;
+        let path = xdg_dirs.place_config_file(PathBuf::from("gtk.css"))?;
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("gtk-4.0")?;
-    let mut path = xdg_dirs.place_config_file(PathBuf::from("gtk.css"))?;
-
-    std::fs::write(&path, &user_color_css)?;
+        std::fs::write(&path, &user_color_css)?;
+    }
 
     // FIXME
     let main_context = MainContext::default();
@@ -76,44 +76,17 @@ pub fn load() -> anyhow::Result<()> {
             })
         })
         .unwrap();
-
-        let mut config_path = Default::default();
-        if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix(NAME) {
-            if let Some(path) =
-                xdg_dirs.find_config_file(PathBuf::from(format!("{CONFIG_NAME}.toml")))
-            {
-                let _ = watcher
-                    .watch(&path, RecursiveMode::NonRecursive)
-                    .unwrap();
-                config_path = path;
-            }
-        }
-        if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-            path = p;
-            let _ = watcher.watch(path.as_ref(), RecursiveMode::NonRecursive);
-        }
+        let _ = watcher
+            .watch(&config_dir_path, RecursiveMode::Recursive)
+            .unwrap();
+        let _ = watcher.watch(&color_dir_path.as_ref(), RecursiveMode::Recursive);
 
         while let Some(res) = rx.next().await {
             match res {
                 Ok(e) => match e.kind {
+                    // TODO only notify for changed data file if it is the active file
                     notify::EventKind::Create(_) | notify::EventKind::Modify(_) => {
                         let _ = tx_clone.send(Event::UpdateColors);
-                        if e.paths.contains(&config_path) {
-                            let _ = watcher.unwatch(&path);
-                            if let Ok(theme) = config::Config::load() {
-                                let active = theme.active_name();
-    
-                                let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
-                                let css_dirs = xdg::BaseDirectories::with_prefix(css_path);
-    
-                                if let (Some(active), Ok(css_dirs)) = (active, css_dirs) {
-                                    if let Some(p) = css_dirs.find_data_file(format!("{active}.ron")) {
-                                        path = p;
-                                        let _ = watcher.watch(&path, RecursiveMode::NonRecursive);
-                                    }
-                                }
-                            }
-                        }
                     }
                     _ => {}
                 },
@@ -123,20 +96,13 @@ pub fn load() -> anyhow::Result<()> {
     });
 
     rx.attach(Some(&main_context), move |_| {
-        let mut user_color_css = String::new();
-        let active = theme.active_name().unwrap();
-        let css_path: PathBuf = [NAME, THEME_DIR].iter().collect();
-        let css_dirs = xdg::BaseDirectories::with_prefix(css_path).unwrap();
-        let active_theme_path = css_dirs.find_data_file(format!("{active}.ron")).unwrap();
-        let active_theme_file = File::open(active_theme_path).unwrap();
-        let reader = BufReader::new(active_theme_file);
-        let overrides: colors::ColorOverrides = ron::de::from_reader(reader).unwrap();
-
-        user_color_css.push_str(&overrides.as_css());
-        user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
-        if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix("gtk-4.0") {
-            if let Ok(path) = xdg_dirs.place_config_file(PathBuf::from("gtk.css")) {
-                let _ = std::fs::write(&path, &user_color_css);
+        if let Ok(overrides) = ColorOverrides::load_active() {
+            let user_color_css = &mut overrides.as_css().to_string();
+            user_color_css.push_str(&format!("\n@import url(\"custom.css\");\n"));
+            if let Ok(xdg_dirs) = xdg::BaseDirectories::with_prefix("gtk-4.0") {
+                if let Ok(path) = xdg_dirs.place_config_file(PathBuf::from("gtk.css")) {
+                    let _ = std::fs::write(&path, &user_color_css);
+                }
             }
         }
         adw::prelude::Continue(true)
