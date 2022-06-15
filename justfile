@@ -24,8 +24,8 @@ install:
     # app list
     install -Dm0644 resources/adw-user-colors.service ~/.config/systemd/user/
     install -Dm0755 target/release/adw-user-colors {{bindir}}/adw-user-colors
-    systemctl --enable adw-user-colors.service --user
-    
+    systemctl enable adw-user-colors.service --user
+
 # Extracts vendored dependencies if vendor=1
 _extract_vendor:
     #!/usr/bin/env sh
