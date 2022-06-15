@@ -54,7 +54,7 @@ pub struct ColorOverrides {
     // Cards, boxed lists
     pub card_bg_color: Option<String>,
     pub card_fg_color: Option<String>,
-    pub card_border_color: Option<String>,
+    pub card_shade_color: Option<String>,
 
     // Popovers
     pub popover_bg_color: Option<String>,
@@ -62,7 +62,6 @@ pub struct ColorOverrides {
 
     // Miscellaneous
     pub scrollbar_outline_color: Option<String>,
-    pub window_outline_color: Option<String>,
     pub shade_color: Option<String>,
 }
 
@@ -122,6 +121,14 @@ impl ColorOverrides {
         Ok(ron::de::from_reader(reader)?)
     }
 
+    pub fn light_default() -> Self {
+        ron::de::from_bytes(include_bytes!("light_default.ron")).unwrap()
+    }
+
+    pub fn dark_default() -> Self {
+        ron::de::from_bytes(include_bytes!("dark_default.ron")).unwrap()
+    }
+
     pub fn set_key(&mut self, key: &str, value: Option<String>) -> anyhow::Result<()> {
         match key {
             "accent_bg_color" => self.accent_bg_color = value,
@@ -163,7 +170,7 @@ impl ColorOverrides {
             // Cards, boxed lists
             "card_bg_color" => self.card_bg_color = value,
             "card_fg_color" => self.card_fg_color = value,
-            "card_border_color" => self.card_border_color = value,
+            "card_shade_color" => self.card_shade_color = value,
 
             // Popovers
             "popover_bg_color" => self.popover_bg_color = value,
@@ -171,7 +178,6 @@ impl ColorOverrides {
 
             // Miscellaneous
             "scrollbar_outline_color" => self.scrollbar_outline_color = value,
-            "window_outline_color" => self.window_outline_color = value,
             "shade_color" => self.shade_color = value,
             _ => anyhow::bail!("Invalid key"),
         }
@@ -219,7 +225,7 @@ impl ColorOverrides {
             // Cards.clone(), boxed lists
             "card_bg_color" => self.card_bg_color.clone(),
             "card_fg_color" => self.card_fg_color.clone(),
-            "card_border_color" => self.card_border_color.clone(),
+            "card_shade_color" => self.card_shade_color.clone(),
 
             // Popovers
             "popover_bg_color" => self.popover_bg_color.clone(),
@@ -227,7 +233,6 @@ impl ColorOverrides {
 
             // Miscellaneous
             "scrollbar_outline_color" => self.scrollbar_outline_color.clone(),
-            "window_outline_color" => self.window_outline_color.clone(),
             "shade_color" => self.shade_color.clone(),
             _ => None,
         }
@@ -394,10 +399,10 @@ impl ColorOverrides {
                 &card_fg_color
             ));
         }
-        if let Some(card_border_color) = self.card_border_color.as_ref() {
+        if let Some(card_shade_color) = self.card_shade_color.as_ref() {
             user_color_css.push_str(&format!(
-                "@define-color card_border_color {};\n",
-                &card_border_color
+                "@define-color card_shade_color {};\n",
+                &card_shade_color
             ));
         }
 
@@ -420,12 +425,19 @@ impl ColorOverrides {
                 &scrollbar_outline_color
             ));
         }
-        if let Some(window_outline_color) = self.window_outline_color.as_ref() {
-            user_color_css.push_str(&format!(
-                "@define-color window_outline_color {};\n",
-                &window_outline_color
-            ));
-        }
         user_color_css
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn light_default() {
+        super::ColorOverrides::light_default();
+    }
+    
+    #[test]
+    fn dark_default() {
+        super::ColorOverrides::dark_default();
     }
 }
